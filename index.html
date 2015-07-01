@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+	
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="description" content="Twitch Game Viewer Analytics">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<title>GamrHive | Game Trend Analytics</title>
+	<link rel="stylesheet" href="main.css">
+	<script  type="text/javascript" src="d3.min.js"></script>
+</head>
+
+<body>
+<!--Place all DOM elements here -->
+<script>
+	/** Data Source **/ 
+	var Twitchdata = [
+		{key: "ArmA III",						value: 187543},
+		{key: "Batman: Arkham Knight",			value: 165765},
+		{key: "Battlefield", 					value: 123432},
+		{key: "Call of Duty: Advance Warfare", 	value: 109654},
+		{key: "Call of Duty: Black Ops II", 	value: 98743},
+		{key: "Counter Strike", 				value: 94392},
+		{key: "DayZ", 							value: 89456},
+		{key: "Destiny", 						value: 83471},
+		{key: "Dota 2", 						value: 81224},
+		{key: "FIFA 15", 						value: 79542} 
+	];
+	
+	/** SVG Dimensions **/ 
+	var svg_height = 600;
+	var svg_width = 1000;
+	var margin = {
+		top: 50,
+		bottom: 160,
+		right: 40,
+		left: 100
+	};
+	var chart_width = svg_width - margin.left - margin.right; 
+	var chart_height = svg_height - margin.top - margin.bottom;
+	
+	/** Scale Data to SVG Dimensions **/ 
+	var x = d3.scale.ordinal()
+				.domain(Twitchdata.map(function(entry) {
+					return entry.key;
+				}))
+				.rangeBands([0,chart_width]);
+				
+	var y = d3.scale.linear()
+				.domain([0,d3.max(Twitchdata, function(d) {
+					return d.value;
+				})])
+				.range([chart_height,0]);
+				
+	/** Add Sort Button to Webpage **/ 
+	var controls = d3.select("body")
+						.append("div")
+						.attr("id", "controls")
+						
+	var sort_btn = controls.append("button")
+							.html("Sort data: ascending")
+							.attr("state", 0);
+							
+	/** Add SVG Area to Webpage **/ 
+	var svg = d3.select("body").append("svg")
+				.attr("id", "chart")
+				.attr("width", svg_width)
+				.attr("height", svg_height);
+				
+	var chart = svg.append("g")
+					.classed("display", true)
+					.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+					
+	/** Set Chart Colors **/ 
+	var linearColorScale = d3.scale.linear()
+								.domain([0, Twitchdata.length])
+								.range(["#572500", "#f68026"]);
+								
+	var ordinalColorScale = d3.scale.category20();
+	
+	/** Set Axis Info **/ 
+	var xAxis = d3.svg.axis()
+					.scale(x)
+					.orient("bottom");
+					
+	var yAxis = d3.svg.axis()
+					.scale(y)
+					.orient("left");
+					
+	/** Set Chart Gridlines **/ 
+	var yGridlines = d3.svg.axis()
+						.scale(y)
+						.tickSize(-chart_width,0,0)
+						.tickFormat("")
+						.orient("left");
+
+	
+	function drawAxis(params) {
+		if (params.initialize === true) {
+			/** Draw Chart Gridlines **/	
+			this.append("g")
+				.call(params.gridlines)
+				.classed("gridline", true)
+				.attr("transform", "translate(0,0)")
+				
+			/** Add X Axis to Chart **/ 
+			this.append("g")
+				.classed("x axis", true)
+				.attr("transform", "translate(" + 0 + "," + chart_height + ")")
+				.call(params.axis.x)
+					.selectAll("text")
+						.classed("x-axis-label", true)
+						.style("text-anchor", "end")
+						.attr("dx", -8)
+						.attr("dy", 8)
+						.attr("transform", "translate(0,0) rotate(-45)");
+						
+			/** Add Y Axis to Chart **/ 
+			this.append("g")
+				.classed("y axis", true)
+				.attr("transform", "translate(0,0)")
+				.call(params.axis.y);
+				
+			/** Add Y Label to Chart **/ 
+			this.select(".y.axis")
+				.append("text")
+				.attr("x", 0)
+				.attr("y", 0)
+				.style("text-anchor", "middle")
+				.attr("transform", "translate(-75," + chart_height/2 + ") rotate(-90)")
+				.text("Viewers");
+		} else if (params.initialize === false) {
+			//Update info
+			this.selectAll("g.x.axis")
+					.transition()
+					.duration(500)
+					.ease("bounce")
+					.delay(500)
+					.call(params.axis.x);
+			this.selectAll(".x-axis-label")
+					.style("text-anchor", "end")
+					.attr("dx", -8)
+					.attr("dy", 8)
+					.attr("transform", "translate(0,0) rotate(-45)");
+			this.selectAll("g.y.axis")
+					.call(params.axis.y);
+		}
+	}
+	
+	/** Function to Bind and Display Data in SVG Element **/ 
+	function chartplot(params) {
+		
+		/** Update Data Scales **/ 
+		x.domain(Twitchdata.map(function(entry) {
+			return entry.key;
+		}));
+		y.domain([0,d3.max(Twitchdata, function(d) {
+			return d.value;
+		})]);
+		
+		/** Draw the axes and axes labels **/
+		drawAxis.call(this, params)
+			
+		/** Bind Data to SVG Element - ENTER Phase **/ 
+		this.selectAll(".bar")
+			.data(params.data)
+			.enter()
+				.append("rect")
+				.classed("bar", true)
+				.on("mouseover", function(d,i) {
+					d3.select(this).style("fill", "yellow");
+				})
+				.on("mousemove", function(d,i) {
+					
+				})
+				.on("mouseout", function(d,i) {
+					d3.select(this).style("fill", ordinalColorScale(i));
+				});
+		
+		/** Bind Label to SVG Element **/ 
+		this.selectAll(".bar-label")
+			.data(params.data)
+			.enter()
+				.append("text")
+				.classed("bar-label", true);
+				
+		/** Update Data **/ 
+		this.selectAll(".bar")
+			.transition()
+			.duration(500)
+			.ease("bounce")
+			.delay(500)
+			.attr("x", function(d,i) {
+				return x(d.key);
+			})
+			.attr("y", function(d,i) {
+				return y(d.value);
+			})
+			.attr("width", function(d,i) {
+				return x.rangeBand();
+			})
+			.attr("height", function(d,i) {
+				return chart_height - y(d.value);
+			})
+			.style("fill", function(d,i) {
+				return ordinalColorScale(i);
+			});
+			
+		/** Update Labels **/ 
+		this.selectAll(".bar-label")
+			.transition()
+			.duration(500)
+			.ease("bounce")
+			.delay(500)
+			.attr("x", function(d,i) {
+				return x(d.key) + (x.rangeBand()/2);
+			})
+			.attr("dx", 0)
+			.attr("y", function(d,i) {
+				return y(d.value);
+			})
+			.attr("dy", -6)
+			.text(function(d) {
+				return d.value;
+			});
+			
+		/** Remove Unbound Data **/
+		this.selectAll(".bar")
+			.data(params.data)
+			.exit()
+			.remove();
+		
+		/** Remove Unbound Labels **/
+		this.selectAll(".bar-label")
+			.data(params.data)
+			.exit()
+			.remove();
+	}
+	
+	
+	/** Button Interaction **/ 
+	sort_btn.on("click", function() {
+		var self = d3.select(this);
+		var ascending = function(a,b) {
+			return a.value - b.value;
+		}
+		var descending = function(a,b) {
+			return b.value - a.value;
+		}
+		var state = +self.attr("state");
+		var txt = "Sort data: ";
+		if (state === 0) {
+			Twitchdata.sort(ascending);
+			state = 1;
+			txt += "decending";
+		} else if (state === 1) {
+			Twitchdata.sort(descending);
+			state = 0;
+			txt += "ascending";
+		}
+		self.attr("state", state);
+		self.html(txt);
+		
+		/** Call Chart Function **/ 
+		chartplot.call(chart, {
+			data: Twitchdata,
+			axis: {
+				x: xAxis,
+				y: yAxis
+			},
+			gridlines: yGridlines,
+			initialize: false
+		});
+	});
+	
+	
+	/** Call Chart Function **/ 
+	chartplot.call(chart, {
+		data: Twitchdata,
+		axis: {
+			x: xAxis,
+			y: yAxis
+		},
+		gridlines: yGridlines,
+		initialize: true
+	});
+	
+	
+</script>	
+</body>
+</html>
